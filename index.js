@@ -178,7 +178,10 @@ io.on("connection", async (socket) => {
 
     room.decresePlayer();
     room.players = room.players.filter((player) => player.nickName != nickName);
-    room.players[0].points = 0;
+
+    if (room.playerCount > 0) {
+      room.players[0].points = 0;
+    }
 
     if (room.playerCount === 0) {
       rooms = rooms.filter((room) => room.roomCode != roomCode);
