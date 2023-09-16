@@ -118,14 +118,30 @@ io.on("connection", async (socket) => {
     });
   });
 
-  socket.on("END_GAME", ({ roomCode, winner, points }) => {
-    console.log("END_GAME", winner, points);
+  socket.on("END_GAME", ({ roomCode, winner }) => {
+    console.log("END_GAME", winner);
     const room = rooms.find((room) => room.roomCode === roomCode);
 
     io.to(room.roomCode).emit("RECEIVE_CHANGES", {
       gameStatus: "ended",
       winner,
-      points,
+    });
+  });
+
+  socket.on("GET_POINTS", ({ winner, roomCode }) => {
+    console.log("GET_POINTS, winner: ", winner);
+    const room = rooms.find((room) => room.roomCode === roomCode);
+
+    winner === "X" ? (room.players[0].points += 0.5) : null;
+    winner === "O" ? (room.players[1].points += 0.5) : null;
+    winner === "draw" ? (room.draws += 0.5) : null;
+
+    io.to(room.roomCode).emit("RECEIVE_POINTS", {
+      points: {
+        p1: room.players[0].points,
+        p2: room.players[1].points,
+        draws: room.draws,
+      },
     });
   });
 
@@ -162,6 +178,7 @@ io.on("connection", async (socket) => {
 
     room.decresePlayer();
     room.players = room.players.filter((player) => player.nickName != nickName);
+    room.players[0].points = 0;
 
     if (room.playerCount === 0) {
       rooms = rooms.filter((room) => room.roomCode != roomCode);
