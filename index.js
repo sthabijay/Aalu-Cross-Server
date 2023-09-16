@@ -20,6 +20,7 @@ class Room {
     this.players = [];
     this.playerCount = 0;
     this.vacant = this.playerCount < 2 ? true : false;
+    this.draws = 0;
   }
 
   addPlayer(player) {
@@ -117,13 +118,14 @@ io.on("connection", async (socket) => {
     });
   });
 
-  socket.on("END_GAME", ({ roomCode, winner }) => {
-    console.log("END_GAME", winner);
+  socket.on("END_GAME", ({ roomCode, winner, points }) => {
+    console.log("END_GAME", winner, points);
     const room = rooms.find((room) => room.roomCode === roomCode);
 
     io.to(room.roomCode).emit("RECEIVE_CHANGES", {
       gameStatus: "ended",
       winner,
+      points,
     });
   });
 
@@ -171,6 +173,10 @@ io.on("connection", async (socket) => {
 
     io.to(room.roomCode).emit("RECEIVE_ROOM", { room });
   });
+});
+
+app.get("/", (req, res) => {
+  res.json({ response: "online" });
 });
 
 server.listen(port, () => {
