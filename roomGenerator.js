@@ -17,11 +17,11 @@ const roomGenerator = (rooms, gameMode) => {
     const room = rooms.filter((room) => room.roomId === result);
 
     if (room.length === 0) {
-      console.log("no collison", result);
+      console.log("ROOM CREATED, ROOM CODE: ", result);
       return result;
     }
 
-    console.log("collison");
+    console.log("COLLISION");
     return roomGenerator(rooms);
   } catch (error) {
     console.log(error);
