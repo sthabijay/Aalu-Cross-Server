@@ -180,6 +180,7 @@ io.on("connection", async (socket) => {
 
       if (room.playerCount > 0) {
         room.players[0].points = 0;
+        room.draws = 0;
       }
 
       if (room.playerCount === 0) {
