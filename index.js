@@ -42,7 +42,16 @@ class Room {
     }
   }
 }
+class Player {
+  constructor(playerId, nickName, roomCode) {
+    this.playerId = playerId;
+    this.nickName = nickName;
+    this.points = 0;
+    this.roomCode = roomCode;
+  }
+}
 let rooms = [];
+let players = [];
 
 io.on("connection", async (socket) => {
   socket.on("CREATE_ROOM", ({ nickName, gameMode }) => {
@@ -50,7 +59,11 @@ io.on("connection", async (socket) => {
 
     const room = new Room(roomGenerator(rooms, gameMode));
     rooms.push(room);
-    room.addPlayer({ nickName, points: 0 });
+
+    const newPlayer = new Player(socket.id, nickName, room.roomCode);
+
+    room.addPlayer(newPlayer);
+    players.push(newPlayer);
 
     socket.join(room.roomCode);
     socket.emit("RECEIVE_ROOM", { room });
@@ -70,21 +83,16 @@ io.on("connection", async (socket) => {
       return;
     }
 
-    const player = room.players.find((player) => player.nickName === nickName);
-
-    if (player) {
-      socket.join(room.roomCode);
-      socket.emit("RECEIVE_ROOM", { room });
-      return;
-    }
-
     if (!room.vacant) {
       console.log("ROOM FULL");
       socket.emit("ERROR", { message: `Room Not Vacant` });
       return;
     }
 
-    room.addPlayer({ nickName, points: 0 });
+    const newPlayer = new Player(socket.id, nickName, room.roomCode);
+
+    room.addPlayer(newPlayer);
+    players.push(newPlayer);
 
     socket.join(room.roomCode);
     socket.emit("RECEIVE_ROOM", { room });
@@ -170,12 +178,46 @@ io.on("connection", async (socket) => {
     console.log("\nLEAVE_ROOM");
     const room = rooms.find((room) => room.roomCode === roomCode);
 
-    if (room) {
+    players = players.filter((player) => player.playerId != socket.id);
+    console.log("PLAYERS: ", players);
+
+    socket.leave(room.roomCode);
+
+    room.decresePlayer();
+    room.players = room.players.filter((player) => player.nickName != nickName);
+
+    if (room.playerCount > 0) {
+      room.players[0].points = 0;
+      room.draws = 0;
+    }
+
+    if (room.playerCount === 0) {
+      rooms = rooms.filter((room) => room.roomCode != roomCode);
+      console.log("ROOMS: ", rooms);
+      return;
+    }
+
+    io.to(room.roomCode).emit("RECEIVE_ROOM", { room });
+
+    console.log("ROOMS: ", rooms);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("\nDISCONNECT");
+
+    const player = players.find((player) => player.playerId === socket.id);
+
+    if (player) {
+      players = players.filter((player) => player.playerId != socket.id);
+      console.log("PLAYERS: ", players);
+
+      const room = rooms.find((room) => (room.roomCode = player.roomCode));
+
       socket.leave(room.roomCode);
 
       room.decresePlayer();
       room.players = room.players.filter(
-        (player) => player.nickName != nickName
+        (player) => player.playerId != socket.id
       );
 
       if (room.playerCount > 0) {
@@ -184,14 +226,14 @@ io.on("connection", async (socket) => {
       }
 
       if (room.playerCount === 0) {
-        rooms = rooms.filter((room) => room.roomCode != roomCode);
-        console.log(rooms);
+        rooms = rooms.filter((r) => r.roomCode != room.roomCode);
+        console.log("ROOMS: ", rooms);
         return;
       }
 
       io.to(room.roomCode).emit("RECEIVE_ROOM", { room });
 
-      console.log(rooms);
+      console.log("ROOMS: ", rooms);
     }
   });
 });
